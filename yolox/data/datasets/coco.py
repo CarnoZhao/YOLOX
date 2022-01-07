@@ -26,6 +26,7 @@ class COCODataset(Dataset):
         img_size=(416, 416),
         preproc=None,
         cache=False,
+        filter_empty_gt=False
     ):
         """
         COCO dataset initialization. Annotation data are read into memory by COCO API.
@@ -42,8 +43,10 @@ class COCODataset(Dataset):
         self.data_dir = data_dir
         self.json_file = json_file
 
-        self.coco = COCO(os.path.join(self.data_dir, "annotations", self.json_file))
+        self.coco = COCO(os.path.join(self.data_dir, self.json_file))
         self.ids = self.coco.getImgIds()
+        if filter_empty_gt:
+            self.ids = [i for i in self.ids if len(self.coco.getAnnIds(imgIds = [i])) > 0]
         self.class_ids = sorted(self.coco.getCatIds())
         cats = self.coco.loadCats(self.coco.getCatIds())
         self._classes = tuple([c["name"] for c in cats])
@@ -114,10 +117,10 @@ class COCODataset(Dataset):
         )
 
     def load_anno_from_ids(self, id_):
-        im_ann = self.coco.loadImgs(id_)[0]
+        im_ann = self.coco.loadImgs([id_])[0]
         width = im_ann["width"]
         height = im_ann["height"]
-        anno_ids = self.coco.getAnnIds(imgIds=[int(id_)], iscrowd=False)
+        anno_ids = self.coco.getAnnIds(imgIds=[id_], iscrowd=False)
         annotations = self.coco.loadAnns(anno_ids)
         objs = []
         for obj in annotations:

@@ -33,8 +33,13 @@ class Exp(BaseExp):
         # You can uncomment this line to specify a multiscale range
         # self.random_size = (14, 26)
         self.data_dir = None
-        self.train_ann = "instances_train2017.json"
-        self.val_ann = "instances_val2017.json"
+        self.train_ann = None
+        self.train_image_dir = None
+        self.val_ann = None
+        self.val_image_dir = None
+        self.test_ann = None
+        self.test_image_dir = None
+        self.filter_empty_gt = False
 
         # --------------- transform config ----------------- #
         self.mosaic_prob = 1.0
@@ -99,6 +104,7 @@ class Exp(BaseExp):
             InfiniteSampler,
             MosaicDetection,
             worker_init_reset_seed,
+            ConcatDataset
         )
         from yolox.utils import (
             wait_for_the_master,
@@ -111,12 +117,14 @@ class Exp(BaseExp):
             dataset = COCODataset(
                 data_dir=self.data_dir,
                 json_file=self.train_ann,
+                name=self.train_image_dir,
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
                     flip_prob=self.flip_prob,
                     hsv_prob=self.hsv_prob),
                 cache=cache_img,
+                filter_empty_gt=self.filter_empty_gt
             )
 
         dataset = MosaicDetection(
@@ -242,8 +250,8 @@ class Exp(BaseExp):
 
         valdataset = COCODataset(
             data_dir=self.data_dir,
-            json_file=self.val_ann if not testdev else "image_info_test-dev2017.json",
-            name="val2017" if not testdev else "test2017",
+            json_file=self.val_ann if not testdev else self.test_ann,
+            name=self.val_image_dir if not testdev else self.test_image_dir,
             img_size=self.test_size,
             preproc=ValTransform(legacy=legacy),
         )
