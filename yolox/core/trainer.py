@@ -63,7 +63,7 @@ class Trainer:
             self.file_name,
             distributed_rank=self.rank,
             filename="train_log.txt",
-            mode="a",
+            mode="o",
         )
 
     def train(self):
