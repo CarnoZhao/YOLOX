@@ -45,7 +45,8 @@ class Exp(BaseExp):
         self.mosaic_prob = 1.0
         self.mixup_prob = 1.0
         self.hsv_prob = 1.0
-        self.flip_prob = 0.5
+        self.hflip_prob = 0.5
+        self.vflip_prob = 0.
         self.degrees = 10.0
         self.translate = 0.1
         self.mosaic_scale = (0.1, 2)
@@ -121,7 +122,8 @@ class Exp(BaseExp):
                 img_size=self.input_size,
                 preproc=TrainTransform(
                     max_labels=50,
-                    flip_prob=self.flip_prob,
+                    hflip_prob=self.hflip_prob,
+                    vflip_prob=self.vflip_prob,
                     hsv_prob=self.hsv_prob),
                 cache=cache_img,
                 filter_empty_gt=self.filter_empty_gt
@@ -133,7 +135,8 @@ class Exp(BaseExp):
             img_size=self.input_size,
             preproc=TrainTransform(
                 max_labels=120,
-                flip_prob=self.flip_prob,
+                hflip_prob=self.hflip_prob,
+                vflip_prob=self.vflip_prob,
                 hsv_prob=self.hsv_prob),
             degrees=self.degrees,
             translate=self.translate,

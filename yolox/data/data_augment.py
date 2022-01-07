@@ -133,11 +133,14 @@ def random_affine(
     return img, targets
 
 
-def _mirror(image, boxes, prob=0.5):
-    _, width, _ = image.shape
-    if random.random() < prob:
+def _mirror(image, boxes, prob_h=0.5, prob_v=0):
+    height, width, _ = image.shape
+    if random.random() < prob_h:
         image = image[:, ::-1]
         boxes[:, 0::2] = width - boxes[:, 2::-2]
+    if random.random() < prob_v:
+        image = image[::-1]
+        boxes[:, 1::2] = height - boxes[:, 3::-2]
     return image, boxes
 
 
@@ -161,9 +164,10 @@ def preproc(img, input_size, swap=(2, 0, 1)):
 
 
 class TrainTransform:
-    def __init__(self, max_labels=50, flip_prob=0.5, hsv_prob=1.0):
+    def __init__(self, max_labels=50, hflip_prob=0.5, vflip_prob=0., hsv_prob=1.0):
         self.max_labels = max_labels
-        self.flip_prob = flip_prob
+        self.hflip_prob = hflip_prob
+        self.vflip_prob = vflip_prob
         self.hsv_prob = hsv_prob
 
     def __call__(self, image, targets, input_dim):
@@ -184,7 +188,7 @@ class TrainTransform:
 
         if random.random() < self.hsv_prob:
             augment_hsv(image)
-        image_t, boxes = _mirror(image, boxes, self.flip_prob)
+        image_t, boxes = _mirror(image, boxes, self.hflip_prob, self.vflip_prob)
         height, width, _ = image_t.shape
         image_t, r_ = preproc(image_t, input_dim)
         # boxes [xyxy] 2 [cx,cy,w,h]
