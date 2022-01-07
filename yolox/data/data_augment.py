@@ -14,6 +14,7 @@ import random
 
 import cv2
 import numpy as np
+from .autoaugment import AutoAugmentPolicy
 
 from yolox.utils import xyxy2cxcywh
 
@@ -164,11 +165,12 @@ def preproc(img, input_size, swap=(2, 0, 1)):
 
 
 class TrainTransform:
-    def __init__(self, max_labels=50, hflip_prob=0.5, vflip_prob=0., hsv_prob=1.0):
+    def __init__(self, max_labels=50, hflip_prob=0.5, vflip_prob=0., hsv_prob=1.0, autoaug_policy=None):
         self.max_labels = max_labels
         self.hflip_prob = hflip_prob
         self.vflip_prob = vflip_prob
         self.hsv_prob = hsv_prob
+        self.autoaug = AutoAugmentPolicy(autoaug_policy) if autoaug_policy is not None else None
 
     def __call__(self, image, targets, input_dim):
         boxes = targets[:, :4].copy()
@@ -189,6 +191,11 @@ class TrainTransform:
         if random.random() < self.hsv_prob:
             augment_hsv(image)
         image_t, boxes = _mirror(image, boxes, self.hflip_prob, self.vflip_prob)
+
+
+        if self.autoaug is not None:
+            image_t, boxes = self.autoaug(image_t, boxes)
+
         height, width, _ = image_t.shape
         image_t, r_ = preproc(image_t, input_dim)
         # boxes [xyxy] 2 [cx,cy,w,h]

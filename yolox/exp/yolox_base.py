@@ -53,6 +53,7 @@ class Exp(BaseExp):
         self.mixup_scale = (0.5, 1.5)
         self.shear = 2.0
         self.enable_mixup = True
+        self.autoaug_policy = None
 
         # --------------  training config --------------------- #
         self.warmup_epochs = 5
@@ -124,7 +125,8 @@ class Exp(BaseExp):
                     max_labels=50,
                     hflip_prob=self.hflip_prob,
                     vflip_prob=self.vflip_prob,
-                    hsv_prob=self.hsv_prob),
+                    hsv_prob=self.hsv_prob,
+                    autoaug_policy=self.autoaug_policy),
                 cache=cache_img,
                 filter_empty_gt=self.filter_empty_gt
             )
