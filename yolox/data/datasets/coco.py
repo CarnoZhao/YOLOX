@@ -26,7 +26,8 @@ class COCODataset(Dataset):
         img_size=(416, 416),
         preproc=None,
         cache=False,
-        filter_empty_gt=False
+        filter_empty_gt=False,
+        crop_size = None
     ):
         """
         COCO dataset initialization. Annotation data are read into memory by COCO API.
@@ -53,6 +54,7 @@ class COCODataset(Dataset):
         self.imgs = None
         self.name = name
         self.img_size = img_size
+        self.crop_size = crop_size
         self.preproc = preproc
         self.annotations = self._load_coco_annotations()
         if cache:
@@ -141,7 +143,8 @@ class COCODataset(Dataset):
             res[ix, 0:4] = obj["clean_bbox"]
             res[ix, 4] = cls
 
-        r = min(self.img_size[0] / height, self.img_size[1] / width)
+        # r = min(self.img_size[0] / height, self.img_size[1] / width)
+        r = 1
         res[:, :4] *= r
 
         img_info = (height, width)
@@ -158,15 +161,42 @@ class COCODataset(Dataset):
     def load_anno(self, index):
         return self.annotations[index][0]
 
-    def load_resized_img(self, index):
+    def random_crop(self, img, res):
+        margin_h = max(img.shape[0] - self.crop_size, 0)
+        margin_w = max(img.shape[1] - self.crop_size, 0)
+        offset_h = np.random.randint(0, margin_h + 1)
+        offset_w = np.random.randint(0, margin_w + 1)
+        crop_y1, crop_y2 = offset_h, offset_h + self.crop_size
+        crop_x1, crop_x2 = offset_w, offset_w + self.crop_size
+
+        # crop the image
+        img = img[crop_y1:crop_y2, crop_x1:crop_x2, ...]
+        img_shape = img.shape
+
+        bbox_offset = np.array([offset_w, offset_h, offset_w, offset_h],
+                                   dtype=np.float32)
+        bboxes = res
+        bboxes[:,:4] -= bbox_offset
+        bboxes[:, 0::2] = np.clip(bboxes[:, 0::2], 0, img_shape[1])
+        bboxes[:, 1::2] = np.clip(bboxes[:, 1::2], 0, img_shape[0])
+        valid_inds = (bboxes[:, 2] > bboxes[:, 0]) & (
+                bboxes[:, 3] > bboxes[:, 1])
+        bboxes = bboxes[valid_inds, :]
+        return img, bboxes
+
+
+    def load_resized_img(self, index, res):
         img = self.load_image(index)
+        if self.crop_size is not None:
+            img, res = self.random_crop(img, res)
         r = min(self.img_size[0] / img.shape[0], self.img_size[1] / img.shape[1])
         resized_img = cv2.resize(
             img,
             (int(img.shape[1] * r), int(img.shape[0] * r)),
             interpolation=cv2.INTER_LINEAR,
         ).astype(np.uint8)
-        return resized_img
+        res[:, :4] *= r
+        return resized_img, res
 
     def load_image(self, index):
         file_name = self.annotations[index][3]
@@ -180,13 +210,13 @@ class COCODataset(Dataset):
 
     def pull_item(self, index):
         id_ = self.ids[index]
-
         res, img_info, resized_info, _ = self.annotations[index]
         if self.imgs is not None:
             pad_img = self.imgs[index]
             img = pad_img[: resized_info[0], : resized_info[1], :].copy()
         else:
-            img = self.load_resized_img(index)
+            img, res = self.load_resized_img(index, res)
+            
 
         return img, res.copy(), img_info, np.array([id_])
 
